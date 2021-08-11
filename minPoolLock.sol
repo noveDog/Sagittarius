@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at hecoinfo.com on 2021-03-05
-*/
-
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
