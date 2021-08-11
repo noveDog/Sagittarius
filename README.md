@@ -5,7 +5,7 @@ developing code
 
 🤝 Join us here ！
 
-## TODO
+## Todo
 the next code should use 0.8
 
 the next code should use proxy
