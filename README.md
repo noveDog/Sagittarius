@@ -22,7 +22,7 @@ buy: 0xE865B9bA16454a1c7ce736E43Dbd0463A7075d28
 
 buyAndAddLiquidity：0xf29C9f92e0ABa4D0c914C93C486854cf47c5f128
 
-### Proxy
+### Proxy contracts
 
 nodeMintPool: 0xC63F01D94ba3932376D85E3fFc692f9b713aA4e0
 
