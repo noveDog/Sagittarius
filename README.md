@@ -1,5 +1,4 @@
 # Sagittarius
-Sagittarius
 
 Used to store the project code in use. The development plan of the entire project. Everyone is welcome to submit suggestions.
 
