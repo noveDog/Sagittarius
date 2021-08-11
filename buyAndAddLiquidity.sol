@@ -106,15 +106,14 @@ contract buyAndAddLiquidity is Ownable{
 
 
     function buyAndAddLiquidityAssert(uint256 amountOfUSDT, address _father) public {
-        //把USDT转到本合约进行操作，USDT不会有手续费问题，不需要加白名单
         USDT.transferFrom(msg.sender, address(this), amountOfUSDT);
 
-        //将资金分成两部分
+
         uint256 balanceOfUSDT = USDT.balanceOf(address(this));
         uint256 halfOfUSDT = balanceOfUSDT / 2;
         uint256 anotherOfUSDT = balanceOfUSDT - halfOfUSDT;
 
-        //将其中一般授权给购买合约，进行购买
+
         address[] memory path = new address[](2);
         path[0] = address(USDT);
         path[1] = address(SGRv2);
@@ -123,20 +122,20 @@ contract buyAndAddLiquidity is Ownable{
         }
         IERC20(USDT).approve(address(router02), anotherOfUSDT);
         uint256 beforeSGRv2 = SGRv2.balanceOf(msg.sender);
-        router02.swapExactTokensForTokens(anotherOfUSDT, 0, path, msg.sender, block.timestamp); //发送给调用者 这样才能正常进行奖励分配
+        router02.swapExactTokensForTokens(anotherOfUSDT, 0, path, msg.sender, block.timestamp);
         uint256 balanceOfSGRv2 = SGRv2.balanceOf(msg.sender) - beforeSGRv2;
         SGRv2.transferFrom(msg.sender, address(this), balanceOfSGRv2);
 
-        //授权并添加流动性
+
         SGRv2.approve(address(liquidityManagerContract), balanceOfSGRv2);
         USDT.approve(address(liquidityManagerContract), balanceOfUSDT);
         liquidityManagerContract.addLiquidity(halfOfUSDT, balanceOfSGRv2);
         
 
-        //这里必然是USDT会多出来，因为购买SGR时要扣除手续费，虽然SGR的价格升高了但是不太可能升高11%，所以直接将USDT返还给用户，以防万一，SGR也会返还给用户，但是会扣除手续费
+
         uint256 balanceOfLP = LPToken.balanceOf(address(this));
         balanceOfUSDT = USDT.balanceOf(address(this));
-        balanceOfSGRv2 = SGRv2.balanceOf(address(this));//复用变量
+        balanceOfSGRv2 = SGRv2.balanceOf(address(this));
         if(balanceOfLP > 0){
             LPToken.transfer(msg.sender, balanceOfLP);
         }
@@ -152,35 +151,35 @@ contract buyAndAddLiquidity is Ownable{
     }
 
     function buyAndAddLiquidityAssert(uint256 amountOfUSDT) public {
-        //把USDT转到本合约进行操作，USDT不会有手续费问题，不需要加白名单
+
         USDT.transferFrom(msg.sender, address(this), amountOfUSDT);
 
-        //将资金分成两部分
+
         uint256 balanceOfUSDT = USDT.balanceOf(address(this));
         uint256 halfOfUSDT = balanceOfUSDT / 2;
         uint256 anotherOfUSDT = balanceOfUSDT - halfOfUSDT;
 
-        //将其中一般授权给购买合约，进行购买
+
         address[] memory path = new address[](2);
         path[0] = address(USDT);
         path[1] = address(SGRv2);
         IERC20(USDT).approve(address(router02), anotherOfUSDT);
         uint256 beforeSGRv2 = SGRv2.balanceOf(msg.sender);
-        router02.swapExactTokensForTokens(anotherOfUSDT, 0, path, msg.sender, block.timestamp); //发送给调用者 这样才能正常进行奖励分配
+        router02.swapExactTokensForTokens(anotherOfUSDT, 0, path, msg.sender, block.timestamp);
         uint256 balanceOfSGRv2 = SGRv2.balanceOf(msg.sender) - beforeSGRv2;
         SGRv2.transferFrom(msg.sender, address(this), balanceOfSGRv2);
 
 
-        //授权并添加流动性
+
         SGRv2.approve(address(liquidityManagerContract), balanceOfSGRv2);
         USDT.approve(address(liquidityManagerContract), balanceOfUSDT);
         liquidityManagerContract.addLiquidity(halfOfUSDT, balanceOfSGRv2);
         
 
-        //这里必然是USDT会多出来，因为购买SGR时要扣除手续费，虽然SGR的价格升高了但是不太可能升高11%，所以直接将USDT返还给用户，以防万一，SGR也会返还给用户，但是会扣除手续费
+
         uint256 balanceOfLP = LPToken.balanceOf(address(this));
         balanceOfUSDT = USDT.balanceOf(address(this));
-        balanceOfSGRv2 = SGRv2.balanceOf(address(this));//复用变量
+        balanceOfSGRv2 = SGRv2.balanceOf(address(this));
         if(balanceOfLP > 0){
             LPToken.transfer(msg.sender, balanceOfLP);
         }
