@@ -307,8 +307,7 @@ interface IGCG is IERC20 {
     function mint(address _to, uint256 _amount) external returns (bool);
 }
 
-contract SGRPool is Ownable {
-    
+contract stakePool is Ownable {
     
     using SafeMath for uint256;
 

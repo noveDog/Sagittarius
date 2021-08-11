@@ -267,7 +267,7 @@ interface relationship{
     function getGrandFather(address _addr) external view returns(address);
 }
 
-contract SGRPool is Ownable {
+contract nodeStakePool is Ownable {
     using SafeMath for uint256;
 
     struct UserInfo {

@@ -524,7 +524,7 @@ interface relationship{
     function getFather(address _addr) external view returns(address);
     function getGrandFather(address _addr) external view returns(address);
 }
-contract SGRToken is ERC20, ERC20Detailed, Ownable{
+contract SGRv2 is ERC20, ERC20Detailed, Ownable{
     
     relationship RP;
     address Token_v1;
