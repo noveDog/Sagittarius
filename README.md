@@ -24,9 +24,8 @@ buyAndAddLiquidityHelp：0xf29C9f92e0ABa4D0c914C93C486854cf47c5f128
 3. Development investment projects.
 
 ## About
- We are welcome any suggestion and will give SGR for the contributor.
- 
- 
+We are welcome any suggestion and will give SGR for the contributor.
+
 ### email us: 
 sgr@finance.com
 noveDog13@gmail.com
