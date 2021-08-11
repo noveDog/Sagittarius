@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at BscScan.com on 2021-05-31
-*/
-
 // SPDX-License-Identifier: MIT
 pragma solidity 0.4.25;
 library SafeMath {
