@@ -117,7 +117,7 @@ contract buyToken is Ownable{
     }
 
     function sell(address _father, uint256 _amount) public {
-        if (RP.father(msg.sender) == address(0)){//如果没有绑定推荐关系，就在这里绑定 否则跳过
+        if (RP.father(msg.sender) == address(0)){
             RP.otherCallSetRelationship(msg.sender, _father);
         }
         _sell(_amount);
@@ -143,7 +143,7 @@ contract buyToken is Ownable{
     }
 
     function _sell(uint256 _amount) internal {
-        IERC20(SAGToken).transferFrom(msg.sender, address(this), _amount);//代币代理转账到本合约时，就已经
+        IERC20(SAGToken).transferFrom(msg.sender, address(this), _amount);
 
         address[] memory path = new address[](2);
         path[0] = SAGToken;
