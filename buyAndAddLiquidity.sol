@@ -1,5 +1,5 @@
-pragma solidity ^0.6.12;
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.6.12;
 
 interface LiquidityManager{
     function addLiquidity(uint256 _amountADesired, uint256 _amountBDesired) external;
