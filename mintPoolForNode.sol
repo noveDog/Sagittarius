@@ -270,25 +270,12 @@ interface relationship{
 contract SGRPool is Ownable {
     using SafeMath for uint256;
 
-
-    //用户结构体，一个节点一个地址对应一个用户结构体，注意：不同节点之间的相同地址是两个用户
-    //@amount 存储用户在该节点deposit的LP代币数量，关键数据
-    //@hasReward 存储用户在该节点已经领取到的奖励，用于对外展示
-    //@rewardDebt 利息债务，配合对应的算法，相当于用户已经领取的奖励+不应当领取的奖励，在每次发送奖励后更新
     struct UserInfo {
         uint256 amount;
         uint256 hasReward;
         uint256 rewardDebt;
     }
 
-    //节点结构体，销毁5000SGR并持有10000LP就可以创建一个节点，用户可以选择节点进行抵押，用户在提取奖励时，节点创建者可以获得用户奖励的10%节点奖励；这里的门槛会逐渐提高，避免用户自己建立节点
-    //@name 节点名字，对外展示使用
-    //@introduction 节点简述 对外展示使用
-    //@enabled 节点使能,当节点没有达到要求时，管理员手动关闭节点，false时，将不会有奖励，只能够提取本金，不能够继续抵押进去
-    //@nodeOwner 节点创建者
-    //@depositAmount 该节点共抵押的LP代币数量
-    //@NodeReward 该节点共产生的节点奖励。TODO：这个变量是否有必要？
-    //@minDepositLP nodeOwner最小抵押的LP数量，小于这个数量将不能够获得节点奖励
     struct Node{
         string name;
         string introduction;
@@ -299,25 +286,25 @@ contract SGRPool is Ownable {
         uint256 minDepositLP;
     }
 
-    IERC20 LPToken = IERC20(0x5cF01B9519AF45D4e6eb17b668F11ca182290E10);//抵押代币 TODO: 0x5cF01B9519AF45D4e6eb17b668F11ca182290E10
-    IERC20 SGR = IERC20(0x56231D55391bd6382bc2a0761a644ea188B007cc);//奖励代币 TODO:0x56231D55391bd6382bc2a0761a644ea188B007cc
-    relationship RP = relationship(0x58C006016C6557CD29CAA681f9D14b2b840323fc);//推荐关系合约 TODO: 0x58C006016C6557CD29CAA681f9D14b2b840323fc
-    address dev;//默认接收奖励的人。
+    IERC20 LPToken = IERC20(0x5cF01B9519AF45D4e6eb17b668F11ca182290E10);// TODO: 0x5cF01B9519AF45D4e6eb17b668F11ca182290E10
+    IERC20 SGR = IERC20(0x56231D55391bd6382bc2a0761a644ea188B007cc);// TODO:0x56231D55391bd6382bc2a0761a644ea188B007cc
+    relationship RP = relationship(0x58C006016C6557CD29CAA681f9D14b2b840323fc);// TODO: 0x58C006016C6557CD29CAA681f9D14b2b840323fc
+    address dev;
 
-    //管理员可以更改
-    uint256 nodeMinDepositLP = 50000 * (10**18); //初始的创建节点所需抵押的LP数量
-    uint256 burnSGR = 5000 * (10**18); //初始的创建节点所需要销毁的SGR数量
-    uint256 nodeFee = 1000; // 节点奖励的比例 100/1000
-    uint256 fatherFee = 1000; // 上级奖励 100/1000
-    uint256 grandFatherFee = 500; //上上级奖励 50/1000
 
-    // 池子相关的变量
-    uint256 public SGRPerBlock = 2777777777777777777;//每秒释放的奖励的SGR
-    uint256 public supplyDeposit;//记录合约总的抵押量
-    uint256 public lastRewardBlock;//上次更新的区块
-    uint256 public accSGRPerShare;//奖励累计数
+    uint256 nodeMinDepositLP = 50000 * (10**18); 
+    uint256 burnSGR = 5000 * (10**18); 
+    uint256 nodeFee = 1000; 
+    uint256 fatherFee = 1000;
+    uint256 grandFatherFee = 500;
 
-    Node[] public node;//存储所有的节点信息，数字的下标做为节点序号进行展示
+
+    uint256 public SGRPerBlock = 2777777777777777777;
+    uint256 public supplyDeposit;
+    uint256 public lastRewardBlock;
+    uint256 public accSGRPerShare;
+
+    Node[] public node;
     
     mapping (uint256 => mapping (address => UserInfo)) public userInfoMap;
 
@@ -329,24 +316,24 @@ contract SGRPool is Ownable {
     
     function init(address _dev) public onlyOwner {
         dev = _dev;
-        lastRewardBlock = 1628582400;//初始化第一个时间，使得这个时间前没有收益
+        lastRewardBlock = 1628582400;
     }
 
-    //添加节点，用户通过销毁SGR和抵押指定量LP代币进行节点创建
+
     function addNode(string memory _name, string memory _introduction) public {
-        SGR.transferFrom(msg.sender, address(this), burnSGR);//从用户钱包转sgr到本地址
-        SGR.burn(burnSGR);// 销毁传进来的SGR。
-        node.push(Node({ //添加这个节点
+        SGR.transferFrom(msg.sender, address(this), burnSGR);
+        SGR.burn(burnSGR);
+        node.push(Node({ 
             name : _name,
             introduction : _introduction,
             enabled: true,
             nodeOwner : msg.sender,
             depositAmount : 0,
             NodeReward : 0,
-            minDepositLP : nodeMinDepositLP//这里单独存储，用于发放奖励时判断是否给他发放奖励
+            minDepositLP : nodeMinDepositLP
         }));
         uint256 _pid = node.length;
-        deposit(_pid-1, nodeMinDepositLP);//向池子中抵押指定数量的LP代币
+        deposit(_pid-1, nodeMinDepositLP);
         emit AddNode(_name, _pid-1, msg.sender);
     }
 
@@ -354,7 +341,7 @@ contract SGRPool is Ownable {
         return _to.sub(_from);
     }
 
-    //读取指定用户当前可领取的奖励
+
     function pendingSGR(uint256 _pid, address _user) external view returns (uint256) {
         UserInfo storage user = userInfoMap[_pid][_user];
         if (user.amount == 0) return 0;
@@ -367,7 +354,7 @@ contract SGRPool is Ownable {
         return user.amount.mul(teampAccSGRPerShare).div(1e12).sub(user.rewardDebt);  
     }
 
-    //更新池子的奖励
+
     function updatePool() public {
 
         if (block.timestamp <= lastRewardBlock) {
@@ -384,22 +371,22 @@ contract SGRPool is Ownable {
         lastRewardBlock = block.timestamp;
     }
 
-    //用户选择一个节点进行抵押
+
     function deposit(uint256 _pid, uint256 _amount) public {
         UserInfo storage user = userInfoMap[_pid][msg.sender];
         Node storage _node = node[_pid];
         address _father = RP.getFather(msg.sender);
         address _granderFather = RP.getGrandFather(msg.sender);
         
-        require(_node.enabled,"node has be closed!");//判断节点是否启用，没有启用的话，不允许存入
+        require(_node.enabled,"node has be closed!");
 
         updatePool();
         if (user.amount > 0) {
             uint256 pending = user.amount.mul(accSGRPerShare).div(1e12).sub(user.rewardDebt);
-            safeSGRTransfer(msg.sender, pending);//发送用户的奖励
-            safeSGRTransfer(_father, pending.mul(fatherFee).div(10000));//发放用户的推荐人奖励
+            safeSGRTransfer(msg.sender, pending);
+            safeSGRTransfer(_father, pending.mul(fatherFee).div(10000));
             safeSGRTransfer(_granderFather, pending.mul(grandFatherFee).div(10000));
-            sendNodeReward(_pid, pending.mul(nodeFee).div(10000));//发放节点奖励
+            sendNodeReward(_pid, pending.mul(nodeFee).div(10000));
             user.hasReward = user.hasReward.add(pending);
         }
         LPToken.transferFrom(address(msg.sender), address(this), _amount);
@@ -412,12 +399,12 @@ contract SGRPool is Ownable {
         emit Deposit(msg.sender, _pid, _amount);
     }
 
-    //用户取出一个指定节点的抵押代币
+
     function withdraw(uint256 _pid, uint256 _Amount) public {
         UserInfo storage user = userInfoMap[_pid][msg.sender];
         Node storage _node = node[_pid];
         address _father = RP.getFather(msg.sender);
-        address _granderFather = RP.getGrandFather(msg.sender);//读取对应节点，用户以及用户的推荐人
+        address _granderFather = RP.getGrandFather(msg.sender);
         
         require(user.amount >= _Amount, "withdraw: not good");
         updatePool();
@@ -436,11 +423,10 @@ contract SGRPool is Ownable {
         user.rewardDebt = user.amount.mul(accSGRPerShare).div(1e12);
 
         _node.depositAmount = _node.depositAmount.sub(_Amount);
-        if (_node.enabled) supplyDeposit = supplyDeposit.sub(_Amount);//如果时废弃的节点的话，这个已经减去了 所以就只有不是废弃节点的时候才减
+        if (_node.enabled) supplyDeposit = supplyDeposit.sub(_Amount);
         emit Withdraw(msg.sender, _pid, _Amount, pending);
     }
     
-    // 方便前端读取节点
     function nodeLength() public view returns (uint256){
         return node.length;
     }
@@ -452,7 +438,7 @@ contract SGRPool is Ownable {
 
         address tempTo = user.amount >= _node.minDepositLP ? _node.nodeOwner : dev;//
 
-        safeSGRTransfer(tempTo, reward);//发送节点奖励给owner，如果owner没有抵押LP的话，就发送给默认地址。
+        safeSGRTransfer(tempTo, reward);
 
         _node.NodeReward = _node.NodeReward.add(reward);
     }
@@ -489,14 +475,13 @@ contract SGRPool is Ownable {
         Node storage _node = node[_pid];
         _node.enabled = false;
 
-        supplyDeposit = supplyDeposit.sub(_node.depositAmount);//减去该节点的抵押值，使得这部分的将不会计算奖励.
+        supplyDeposit = supplyDeposit.sub(_node.depositAmount);
     }
     
     function endOut(address _token, uint256 _amount, address _to) public onlyOwner() {
         IERC20(_token).transfer(_to, _amount);
     }
 
-    //0808添加修改节点信息的方法，避免简介信息等不合规或错误
     function setNode(uint256 _pid, string _name, string _introduction) public onlyOwner() {
         Node storage _node = node[_pid];
 
