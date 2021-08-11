@@ -3,6 +3,8 @@ Sagittarius
 
 developing code
 
+🤝 Join us here ！
+
 ## TODO
 the next code should use 0.8
 
