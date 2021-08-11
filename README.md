@@ -37,4 +37,4 @@ nodeMintPool: 0xC63F01D94ba3932376D85E3fFc692f9b713aA4e0
 
 🛡️ token audit: https://attest.im/attestation/searchResult?qurey=de8b6dadd11f4d508afa0a9af44cfbd2
 
-📧 sgr@finance.com ; noveDog13@gmail.com
+📧 email: sgr@finance.com ; noveDog13@gmail.com
