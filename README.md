@@ -6,7 +6,7 @@ Used to store the project code in use. The development plan of the entire projec
 
 ## BSC chain：
 
-### main contracts
+### Main contracts
 
 Token: 0x56231D55391bd6382bc2a0761a644ea188B007cc
 
@@ -16,7 +16,7 @@ nodeMintPool: 0x002b9D26C717dd991cc1005E46a22A750932c94D
 
 airDrop: 0xc88ce19f50622f28bf2146CCDfAcc6Ca83A5419D
 
-### help contracts
+### Help contracts
 
 buy: 0xE865B9bA16454a1c7ce736E43Dbd0463A7075d28
 
