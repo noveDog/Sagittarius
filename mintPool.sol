@@ -297,6 +297,7 @@ library SafeMath {
     }
 }
 interface relationship{
+    
     function getFather(address _addr) external view returns(address);
     function getGrandFather(address _addr) external view returns(address);
 }
@@ -325,8 +326,6 @@ contract SGRPool is Ownable {
         uint256 endBlock;
         uint256 GCGPerBlock;
         uint256 hasDeposit;
-        uint256 maxDeposit;
-        uint256 rewardMultiple;
     }
 
     IGCG public GCG;
@@ -358,7 +357,7 @@ contract SGRPool is Ownable {
         return poolList.length;
     }
 
-    function addPool(address _lpToken, uint256 _startBlock, uint256 _endBlock, uint256 _GCGPerBlock, uint256 _maxDeposit, uint256 _rewardMultiple) public onlyOwner {
+    function addPool(address _lpToken, uint256 _startBlock, uint256 _endBlock, uint256 _GCGPerBlock/*,  bool _withUpdate */) public onlyOwner {
         uint256 lastRewardBlock = block.timestamp > _startBlock ? block.timestamp : _startBlock;
         poolList.push(PoolInfo({
             lpToken: (IERC20)(_lpToken),
@@ -367,9 +366,7 @@ contract SGRPool is Ownable {
             GCGPerBlock: _GCGPerBlock,
             lastRewardBlock: lastRewardBlock,
             accGCGPerShare: 0,
-            hasDeposit: 0,
-            maxDeposit: _maxDeposit,
-            rewardMultiple: _rewardMultiple
+            hasDeposit: 0
         }));
     }
 
@@ -424,15 +421,6 @@ contract SGRPool is Ownable {
             pool.lastRewardBlock = block.timestamp;
             return;
         }
-
-        if (pool.hasDeposit > pool.maxDeposit){
-            pool.GCGPerBlock = pool.maxDeposit.mul(pool.rewardMultiple).mul(pool.GCGPerBlock).add(pool.hasDeposit.sub(pool.maxDeposit).mul(pool.GCGPerBlock)).div(pool.hasDeposit);
-        }else{
-            pool.GCGPerBlock  = pool.rewardMultiple.mul(pool.GCGPerBlock);
-        }
-
-
-
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, currentBlock);
         uint256 GCGReward = multiplier.mul(pool.GCGPerBlock);
         pool.accGCGPerShare = pool.accGCGPerShare.add(GCGReward.mul(1e12).div(lpSupply));
@@ -442,7 +430,6 @@ contract SGRPool is Ownable {
 
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolList[_pid];
-        require(now < pool.startBlock,"has start!")
         UserInfo storage user = userInfoMap[_pid][msg.sender];
         address _father = RP.getFather(msg.sender);
         address _granderFather = RP.getGrandFather(msg.sender);
@@ -464,7 +451,6 @@ contract SGRPool is Ownable {
 
     function withdraw(uint256 _pid, uint256 _lpAmount) public {
         PoolInfo storage pool = poolList[_pid];
-        require(now > pool.endBlock,"has not end!")
         UserInfo storage user = userInfoMap[_pid][msg.sender];
         address _father = RP.getFather(msg.sender);
         address _granderFather = RP.getGrandFather(msg.sender);
@@ -489,7 +475,6 @@ contract SGRPool is Ownable {
 
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolList[_pid];
-        require(now > pool.endBlock,"has not end!")
         UserInfo storage user = userInfoMap[_pid][msg.sender];
         uint256 amount = user.amount;
         user.amount = 0;
