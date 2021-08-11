@@ -1,4 +1,4 @@
-## Sagittarius
+#### Sagittarius
 Sagittarius
 
 Used to store the project code in use. The development plan of the entire project. Everyone is welcome to submit suggestions.
@@ -22,3 +22,6 @@ buyAndAddLiquidityHelp：0xf29C9f92e0ABa4D0c914C93C486854cf47c5f128
 1. Close LP stake in stakePool
 2. Redesign the official website and DAPP, and add a new docs page.
 3. Development investment projects.
+
+## About
+ We are welcome any suggestion and will give SGR for the contributor.
