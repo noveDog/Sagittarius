@@ -29,13 +29,10 @@ buyAndAddLiquidityHelp：0xf29C9f92e0ABa4D0c914C93C486854cf47c5f128
 
 ## About
 
-web: https://sgr.finance
+🏠 web: https://sgr.finance
 
-token audit: https://attest.im/attestation/searchResult?qurey=de8b6dadd11f4d508afa0a9af44cfbd2
+🛡️ token audit: https://attest.im/attestation/searchResult?qurey=de8b6dadd11f4d508afa0a9af44cfbd2
 
-👍 We are welcome any suggestion and will give SGR for the contributor.
+👊 We are welcome any suggestion and will give SGR for the contributor.
 
-### email us: 
-sgr@finance.com
-
-noveDog13@gmail.com
+📧 sgr@finance.com ; noveDog13@gmail.com
