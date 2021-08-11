@@ -24,7 +24,7 @@ buyAndAddLiquidityHelp：0xf29C9f92e0ABa4D0c914C93C486854cf47c5f128
 
 
 ## Development Plan
-1. Close LP stake in stakePool
+1. Close LP stake in stakePool.
 2. Redesign the official website and DAPP, and add a new docs page.
 3. Development investment projects.
 
