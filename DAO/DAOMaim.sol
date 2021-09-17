@@ -75,90 +75,16 @@ interface IERC20 {
     function burn(uint256 _amount) external;
 }
 
-contract Proxy {
-
-    address owner = 0x63eC3629B7c86FDF0e8c3B9d276a60F7DDf0050F;
-    address public impContrat;
-    /**
-     * @dev Delegates the current call to `implementation`.
-     *
-     * This function does not return to its internall call site, it will return directly to the external caller.
-     */
-    function _delegate(address implementation) internal virtual {
-        assembly {
-            // Copy msg.data. We take full control of memory in this inline assembly
-            // block because it will not return to Solidity code. We overwrite the
-            // Solidity scratch pad at memory position 0.
-            calldatacopy(0, 0, calldatasize())
-
-            // Call the implementation.
-            // out and outsize are 0 because we don't know the size yet.
-            let result := delegatecall(gas(), implementation, 0, calldatasize(), 0, 0)
-
-            // Copy the returned data.
-            returndatacopy(0, 0, returndatasize())
-
-            switch result
-            // delegatecall returns 0 on error.
-            case 0 {
-                revert(0, returndatasize())
-            }
-            default {
-                return(0, returndatasize())
-            }
-        }
-    }
-
-    /**
-     * @dev This is a virtual function that should be overriden so it returns the address to which the fallback function
-     * and {_fallback} should delegate.
-     */
-    function _implementation() internal view virtual returns (address){
-        return impContrat;
-    }
-
-    /**
-     * @dev Delegates the current call to the address returned by `_implementation()`.
-     *
-     * This function does not return to its internall call site, it will return directly to the external caller.
-     */
-    function _fallback() internal virtual {
-        _delegate(_implementation());
-    }
-
-    /**
-     * @dev Fallback function that delegates calls to the address returned by `_implementation()`. Will run if no other
-     * function in the contract matches the call data.
-     */
-    fallback() external payable virtual {
-        _fallback();
-    }
-
-    /**
-     * @dev Fallback function that delegates calls to the address returned by `_implementation()`. Will run if call data
-     * is empty.
-     */
-    receive() external payable virtual {
-        _fallback();
-    }
-
-    //admin function
-    function setImpContract(address _newImpContract) public {
-        require(msg.sender == owner);
-        impContrat = _newImpContract;
-    }
-}
-
-contract DAOMain is Proxy{
+contract DAOMain{
 
     struct proposal{
         uint256 ID;
-        address OWNER;
+        address owner;
         string TITLE;
         uint256 YES;
         uint256 NO;
-        uint256 STARTTIME;
-        uint256 ENDTIME;
+        uint256 stratTime;
+        uint256 endTime;
     }
 
     proposal[] public proposalList;
@@ -166,72 +92,75 @@ contract DAOMain is Proxy{
 
     IERC20 public voteToken;
     uint256 public minAddToken;
-    uint256 public deadline;
+    address public owner;
 
     event AddProposal(address OWNER, uint256 ID, uint256 ENDTIME);
     event Vote(address OWNER, bool YoN, uint256 VOTES);
 
 
-    function init(address _voteToken, uint256 _minAddToken, uint256 _deadline) public {
+    function init(address _voteToken, uint256 _minAddToken, address _owner) public {
         require(voteToken == IERC20(address(0)), "has init");
 
         voteToken = IERC20(_voteToken);
         minAddToken = _minAddToken;
-        deadline = _deadline;
+        owner = _owner;
     }
 
 
-    //add
+    //发起提案
     function addProposal(string memory _title) public {
-        require(voteToken.balanceOf(msg.sender) >= minAddToken, "Sorry, you don't have enough SGRv2!");//check pep hold SGR
+        require(voteToken.balanceOf(msg.sender) >= minAddToken, "Sorry, you don't have enough SGRv2!");//检查用户是否有权限发起投票，即持币数量达到一定量
+        //require(!proposalPending(), "proposal pending");//检查当前是否有正在进行中的提案，如果有，暂时不能发起提案
 
         uint256 _proposalID = proposalList.length;
 
-        proposalList.push(proposal({
+        proposalList.push(proposal{
             ID: _proposalID,
-            OWNER: msg.sender,
+            owner: msg.sender,
             TITLE: _title,
             YES: 0,
-            NO: 0,
-            STARTTIME: block.timestamp,
-            ENDTIME: block.timestamp + deadline
-        }));
+            NO: 0
+            startTime: now
+            endTime: now + 86400 * 7
+        })
 
-        emit AddProposal(msg.sender, _proposalID, block.timestamp + deadline);
+        emit AddProposal(msg.sender, _proposalID, now + 86400 * 7);
     }
 
-    //vote
-    function vote(uint256 _proposalID, bool _YoN, uint256 _votes) public {
-        require(voteToken.balanceOf(msg.sender) - userVotes[_proposalID][msg.sender] >= _votes,"Sorry, you don't have enough SGRv2 for votes!");
+    //投票
+    function vote(uint256 _proposalID, bool YoN, uint256 _votes) public {
+        require(voteToken.balanceOf(msg.sender) >= userVotes[_proposalID][msg.sender],"Sorry, you don't have enough SGRv2 for votes!");
         
         proposal storage _proposal =  proposalList[_proposalID];
 
-        if (_YoN){
+        if (YoN){
             _proposal.YES = _proposal.YES + _votes;
         } else{
             _proposal.NO = _proposal.NO + _votes;
         }
-        userVotes[_proposalID][msg.sender] = userVotes[_proposalID][msg.sender] + _votes;//update user vote
+        userVotes[_proposalID][msg.sender] = userVotes[_proposalID][msg.sender] + _votes;//更新用户已投票的记录
 
-        emit Vote(msg.sender, _YoN, _votes);
+        emit Vote(msg.sender, YoN, _votes);
     }
+
+
+    // function proposalPending() public view returns (bool){
+    //     uint256 _proposalID = proposalList.length;
+    //     proposal memory _proposal =  proposalList[_proposalID];
+
+    //     return _proposal.endTime < now;
+    // }
 
 
     function voteResult(uint256 _proposalID) public view returns (bool) {
         proposal memory _proposal =  proposalList[_proposalID];
-        require(_proposal.ENDTIME < block.timestamp, "proposal not end!");
 
-        return _proposal.YES > _proposal.NO;
+        return _proposal.YES > _proosal.NO;
     }
 
     //admin
     function setMinAddToken(uint256 _MinAddToken) public {
         require(msg.sender == owner);
-        minAddToken = _MinAddToken;
-    }
-    
-    function setDeadline(uint256 _deadline) public {
-        require(msg.sender == owner);
-        deadline = _deadline;
+        minAddToken = _MinAddToken
     }
 }
