@@ -183,8 +183,8 @@ contract DAOMain is Proxy{
 
     //add
     function addProposal(string memory _title) public {
-        require(voteToken.balanceOf(msg.sender) >= minAddToken, "Sorry, you don't have enough SGRv2!");//check pep hold SGR
-
+        require(voteToken.balanceOf(msg.sender) >= minAddToken, "Sorry, you don't have enough SGRv2!");
+        voteToken.transferFrom(msg.sender, address(this), minAddToken);
         uint256 _proposalID = proposalList.length;
 
         proposalList.push(proposal({
@@ -200,7 +200,7 @@ contract DAOMain is Proxy{
         emit AddProposal(msg.sender, _proposalID, block.timestamp + deadline);
     }
 
-    //vote
+    //votes
     function vote(uint256 _proposalID, bool _YoN, uint256 _votes) public {
         require(voteToken.balanceOf(msg.sender) - userVotes[_proposalID][msg.sender] >= _votes,"Sorry, you don't have enough SGRv2 for votes!");
         
@@ -211,7 +211,7 @@ contract DAOMain is Proxy{
         } else{
             _proposal.NO = _proposal.NO + _votes;
         }
-        userVotes[_proposalID][msg.sender] = userVotes[_proposalID][msg.sender] + _votes;//update user vote
+        userVotes[_proposalID][msg.sender] = userVotes[_proposalID][msg.sender] + _votes;
 
         emit Vote(msg.sender, _YoN, _votes);
     }
@@ -233,5 +233,9 @@ contract DAOMain is Proxy{
     function setDeadline(uint256 _deadline) public {
         require(msg.sender == owner);
         deadline = _deadline;
+    }
+    
+    function proposalLength() public view returns (uint256){
+        return proposalList.length;
     }
 }
