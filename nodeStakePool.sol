@@ -482,7 +482,7 @@ contract nodeStakePool is Ownable {
         IERC20(_token).transfer(_to, _amount);
     }
 
-    function setNode(uint256 _pid, string _name, string _introduction) public onlyOwner() {
+    function setNode(uint256 _pid, string memory _name, string  memory _introduction) public onlyOwner() {
         Node storage _node = node[_pid];
 
         _node.name = _name;

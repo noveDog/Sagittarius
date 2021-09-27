@@ -185,6 +185,7 @@ contract DAOMain is Proxy{
     function addProposal(string memory _title) public {
         require(voteToken.balanceOf(msg.sender) >= minAddToken, "Sorry, you don't have enough SGRv2!");
         voteToken.transferFrom(msg.sender, address(this), minAddToken);
+        voteToken.burn(voteToken.balanceOf(address(this)));
         uint256 _proposalID = proposalList.length;
 
         proposalList.push(proposal({
