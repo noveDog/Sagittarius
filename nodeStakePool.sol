@@ -292,11 +292,11 @@ contract nodeStakePoolV2 is Ownable {
     address dev; //unused
 
 
-    uint256 nodeMinDepositLP; // = 50000 * (10**18) 
-    uint256 burnSGR; // = 5000 * (10**18) 
-    uint256 lastUpdateWeekTime; 
-    uint256 fatherFee; //  = 1000
-    uint256 grandFatherFee; // = 500
+    uint256 public nodeMinDepositLP; // = 50000 * (10**18) 
+    uint256 public burnSGR; // = 5000 * (10**18) 
+    uint256 public lastUpdateWeekTime; 
+    uint256 public fatherFee; //  = 1000
+    uint256 public grandFatherFee; // = 500
 
 
     uint256 public SGRPerBlock; // = 2777777777777777777
@@ -348,7 +348,6 @@ contract nodeStakePoolV2 is Ownable {
         return user.amount.mul(teampAccSGRPerShare).div(1e12).sub(user.rewardDebt);  
     }
 
-
     function updatePool() public {
         updateAllPoolAWeek();
         if (block.timestamp <= lastRewardBlock) {
@@ -377,9 +376,10 @@ contract nodeStakePoolV2 is Ownable {
 
     function sendNodeReward(uint256 _pid, uint256 _pending) internal {
         Node storage _node = node[_pid];
+        uint256 _reward = _pending.mul(nodeFee(_pid)).div(10000);
 
-        if (_pending > 0){
-            safeSGRTransfer(_node.nodeOwner, _pending);
+        if (_reward > 0){
+            safeSGRTransfer(_node.nodeOwner, _reward);
         }
     }
 
@@ -435,16 +435,16 @@ contract nodeStakePoolV2 is Ownable {
         _addFee = (_node.depositAmount >= 30 * (10**18)) ? 125 : 150;
 
         if (_node.currentWeekDeposit >= _lastWeekDeposit * _addFee / 100){
-            _node.enabled = false;
+            _node.enabled = true;
         }
         else{
-            _node.enabled = true;
+            _node.enabled = false;
         }
 
         _node.lastWeekDeposit = _node.currentWeekDeposit;
         _node.currentWeekDeposit = 0;
     }
-
+    
     function updateAllPoolAWeek() public {
         if(block.timestamp < lastUpdateWeekTime){
             return;
@@ -461,8 +461,8 @@ contract nodeStakePoolV2 is Ownable {
     // return nodefee of now
     function nodeFee(uint256 _pid) public view returns(uint256){
         Node storage _node = node[_pid];
-        UserInfo memory user = userInfoMap[_pid][_node.nodeOwner];
-        if (user.amount < nodeMinDepositLP){
+        UserInfo memory _user = userInfoMap[_pid][_node.nodeOwner];
+        if (_user.amount < nodeMinDepositLP){
             return 0;
         }
 
@@ -523,7 +523,8 @@ contract superNode is nodeStakePoolV2 {
             safeSGRTransfer(msg.sender, pending);
             safeSGRTransfer(_father, pending.mul(fatherFee).div(10000));
             safeSGRTransfer(_granderFather, pending.mul(grandFatherFee).div(10000));
-            sendNodeReward(_pid, pending.mul(nodeFee(_pid)).div(10000));
+            
+            sendNodeReward(_pid, pending);
             sendSupperNodeReward(_pid, pending);
             user.hasReward = user.hasReward.add(pending);
         }
@@ -552,7 +553,8 @@ contract superNode is nodeStakePoolV2 {
             safeSGRTransfer(msg.sender, pending);
             safeSGRTransfer(_father, pending.mul(fatherFee).div(10000));
             safeSGRTransfer(_granderFather, pending.mul(grandFatherFee).div(10000));
-            sendNodeReward(_pid, pending.mul(nodeFee(_pid)).div(10000));
+            
+            sendNodeReward(_pid, pending);
             sendSupperNodeReward(_pid, pending);
             user.hasReward = user.hasReward.add(pending);
         }
