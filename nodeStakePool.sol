@@ -267,7 +267,7 @@ interface relationship{
     function getGrandFather(address _addr) external view returns(address);
 }
 
-contract nodeStakePool is Ownable {
+contract nodeStakePoolV2 is Ownable {
     using SafeMath for uint256;
 
     struct UserInfo {
@@ -282,24 +282,24 @@ contract nodeStakePool is Ownable {
         bool enabled;
         address nodeOwner;
         uint256 depositAmount;
-        uint256 NodeReward;
-        uint256 minDepositLP;
+        uint256 lastWeekDeposit;
+        uint256 currentWeekDeposit;
     }
 
-    IERC20 LPToken = IERC20(0x5cF01B9519AF45D4e6eb17b668F11ca182290E10);// TODO: 0x5cF01B9519AF45D4e6eb17b668F11ca182290E10
-    IERC20 SGR = IERC20(0x56231D55391bd6382bc2a0761a644ea188B007cc);// TODO:0x56231D55391bd6382bc2a0761a644ea188B007cc
-    relationship RP = relationship(0x58C006016C6557CD29CAA681f9D14b2b840323fc);// TODO: 0x58C006016C6557CD29CAA681f9D14b2b840323fc
-    address dev;
+    IERC20 LPToken; //  = IERC20(0x5cF01B9519AF45D4e6eb17b668F11ca182290E10)
+    IERC20 SGR; // = IERC20(0x56231D55391bd6382bc2a0761a644ea188B007cc);
+    relationship RP; // = relationship(0x58C006016C6557CD29CAA681f9D14b2b840323fc)
+    address dev; //unused
 
 
-    uint256 nodeMinDepositLP = 50000 * (10**18); 
-    uint256 burnSGR = 5000 * (10**18); 
-    uint256 nodeFee = 1000; 
-    uint256 fatherFee = 1000;
-    uint256 grandFatherFee = 500;
+    uint256 nodeMinDepositLP; // = 50000 * (10**18) 
+    uint256 burnSGR; // = 5000 * (10**18) 
+    uint256 lastUpdateWeekTime; 
+    uint256 fatherFee; //  = 1000
+    uint256 grandFatherFee; // = 500
 
 
-    uint256 public SGRPerBlock = 2777777777777777777;
+    uint256 public SGRPerBlock; // = 2777777777777777777
     uint256 public supplyDeposit;
     uint256 public lastRewardBlock;
     uint256 public accSGRPerShare;
@@ -314,11 +314,6 @@ contract nodeStakePool is Ownable {
 
     constructor() public {}
     
-    function init(address _dev) public onlyOwner {
-        dev = _dev;
-        lastRewardBlock = 1628582400;
-    }
-
 
     function addNode(string memory _name, string memory _introduction) public {
         SGR.transferFrom(msg.sender, address(this), burnSGR);
@@ -329,8 +324,8 @@ contract nodeStakePool is Ownable {
             enabled: true,
             nodeOwner : msg.sender,
             depositAmount : 0,
-            NodeReward : 0,
-            minDepositLP : nodeMinDepositLP
+            lastWeekDeposit : 0,
+            currentWeekDeposit : 0
         }));
         uint256 _pid = node.length;
         deposit(_pid-1, nodeMinDepositLP);
@@ -340,7 +335,6 @@ contract nodeStakePool is Ownable {
     function getMultiplier(uint256 _from, uint256 _to) public pure returns (uint256) {
         return _to.sub(_from);
     }
-
 
     function pendingSGR(uint256 _pid, address _user) external view returns (uint256) {
         UserInfo storage user = userInfoMap[_pid][_user];
@@ -356,7 +350,7 @@ contract nodeStakePool is Ownable {
 
 
     function updatePool() public {
-
+        updateAllPoolAWeek();
         if (block.timestamp <= lastRewardBlock) {
             return;
         }
@@ -371,97 +365,35 @@ contract nodeStakePool is Ownable {
         lastRewardBlock = block.timestamp;
     }
 
-
-    function deposit(uint256 _pid, uint256 _amount) public {
-        UserInfo storage user = userInfoMap[_pid][msg.sender];
-        Node storage _node = node[_pid];
-        address _father = RP.getFather(msg.sender);
-        address _granderFather = RP.getGrandFather(msg.sender);
-        
-        require(_node.enabled,"node has be closed!");
-
-        updatePool();
-        if (user.amount > 0) {
-            uint256 pending = user.amount.mul(accSGRPerShare).div(1e12).sub(user.rewardDebt);
-            safeSGRTransfer(msg.sender, pending);
-            safeSGRTransfer(_father, pending.mul(fatherFee).div(10000));
-            safeSGRTransfer(_granderFather, pending.mul(grandFatherFee).div(10000));
-            sendNodeReward(_pid, pending.mul(nodeFee).div(10000));
-            user.hasReward = user.hasReward.add(pending);
-        }
-        LPToken.transferFrom(address(msg.sender), address(this), _amount);
-
-        user.amount = user.amount.add(_amount);
-        user.rewardDebt = user.amount.mul(accSGRPerShare).div(1e12);
-
-        _node.depositAmount = _node.depositAmount.add(_amount);
-        supplyDeposit = supplyDeposit.add(_amount);
-        emit Deposit(msg.sender, _pid, _amount);
+    function deposit(uint256 _pid, uint256 _amount) public virtual {
     }
 
-
-    function withdraw(uint256 _pid, uint256 _Amount) public {
-        UserInfo storage user = userInfoMap[_pid][msg.sender];
-        Node storage _node = node[_pid];
-        address _father = RP.getFather(msg.sender);
-        address _granderFather = RP.getGrandFather(msg.sender);
-        
-        require(user.amount >= _Amount, "withdraw: not good");
-        updatePool();
-        uint256 pending = user.amount.mul(accSGRPerShare).div(1e12).sub(user.rewardDebt);
-        if (pending > 0 && _node.enabled) {
-            safeSGRTransfer(msg.sender, pending);
-            safeSGRTransfer(_father, pending.mul(fatherFee).div(10000));
-            safeSGRTransfer(_granderFather, pending.mul(grandFatherFee).div(10000));
-            sendNodeReward(_pid, pending.mul(nodeFee).div(10000));
-            user.hasReward = user.hasReward.add(pending);
-        }
-        if (_Amount > 0) {
-            user.amount = user.amount.sub(_Amount);
-            LPToken.transfer(address(msg.sender), _Amount);  
-        }
-        user.rewardDebt = user.amount.mul(accSGRPerShare).div(1e12);
-
-        _node.depositAmount = _node.depositAmount.sub(_Amount);
-        if (_node.enabled) supplyDeposit = supplyDeposit.sub(_Amount);
-        emit Withdraw(msg.sender, _pid, _Amount, pending);
+    function withdraw(uint256 _pid, uint256 _Amount) public virtual {
     }
     
     function nodeLength() public view returns (uint256){
         return node.length;
     }
 
-    function sendNodeReward(uint256 _pid, uint256 reward) internal {
-
+    function sendNodeReward(uint256 _pid, uint256 _pending) internal {
         Node storage _node = node[_pid];
-        UserInfo storage user = userInfoMap[_pid][_node.nodeOwner];
 
-        address tempTo = user.amount >= _node.minDepositLP ? _node.nodeOwner : dev;//
-
-        safeSGRTransfer(tempTo, reward);
-
-        _node.NodeReward = _node.NodeReward.add(reward);
+        if (_pending > 0){
+            safeSGRTransfer(_node.nodeOwner, _pending);
+        }
     }
 
     function safeSGRTransfer(address _to, uint256 _amount) internal {
-
-        uint256 SGRBal = SGR.balanceOf(address(this));
-        if (_amount > SGRBal) {
-            SGR.transfer(_to, SGRBal);
-        } else {
             SGR.transfer(_to, _amount);
-        }
     }
     
     //admin function
-
     function setSGRPerBlock(uint256 _SGRPerBlock) public onlyOwner {
         updatePool();
         SGRPerBlock = _SGRPerBlock;
     }
 
-    function setFee(uint256 _nodeFee, uint256 _fatherFee, uint256 _granderFatherFee) public onlyOwner() {
-        nodeFee = _nodeFee;
+    function setFee(uint256 _fatherFee, uint256 _granderFatherFee) public onlyOwner() {
         fatherFee = _fatherFee;
         grandFatherFee = _granderFatherFee;
     }
@@ -471,21 +403,169 @@ contract nodeStakePool is Ownable {
         nodeMinDepositLP = _nodeMinDepositLP;
     }
     
-    function deleteNode(uint256 _pid) public {
-        Node storage _node = node[_pid];
-        _node.enabled = false;
-
-        supplyDeposit = supplyDeposit.sub(_node.depositAmount);
-    }
-    
-    function endOut(address _token, uint256 _amount, address _to) public onlyOwner() {
-        IERC20(_token).transfer(_to, _amount);
-    }
-
     function setNode(uint256 _pid, string memory _name, string  memory _introduction) public onlyOwner() {
         Node storage _node = node[_pid];
 
         _node.name = _name;
         _node.introduction = _introduction;
+    }
+
+    // for v2
+    function init2(uint256 _startTime) public onlyOwner{
+        lastUpdateWeekTime = _startTime;
+
+
+        for (uint256 i = 0; i < node.length; i++){
+            Node storage _node = node[i];
+            
+            _node.lastWeekDeposit = 0;
+            _node.currentWeekDeposit = 0;
+            
+        }
+
+    }
+
+    //update pool
+    function updatePoolAWeek(uint256 _pid) internal {
+
+        Node storage _node = node[_pid];
+        uint256 _lastWeekDeposit = _node.lastWeekDeposit;
+        uint256 _addFee;
+
+        _addFee = (_node.depositAmount >= 30 * (10**18)) ? 125 : 150;
+
+        if (_node.currentWeekDeposit >= _lastWeekDeposit * _addFee / 100){
+            _node.enabled = false;
+        }
+        else{
+            _node.enabled = true;
+        }
+
+        _node.lastWeekDeposit = _node.currentWeekDeposit;
+        _node.currentWeekDeposit = 0;
+    }
+
+    function updateAllPoolAWeek() public {
+        if(block.timestamp < lastUpdateWeekTime){
+            return;
+        }
+        if (block.timestamp - lastUpdateWeekTime >= (86400 * 7)){
+            for (uint256 i = 0; i < node.length; i++){
+                updatePoolAWeek(i);
+            }
+
+            lastUpdateWeekTime = block.timestamp;
+        }
+    }
+
+    // return nodefee of now
+    function nodeFee(uint256 _pid) public view returns(uint256){
+        Node storage _node = node[_pid];
+        UserInfo memory user = userInfoMap[_pid][_node.nodeOwner];
+        if (user.amount < nodeMinDepositLP){
+            return 0;
+        }
+
+        if (_node.depositAmount >= 30 * (10 **18)){
+            return _node.enabled ? 5000 : 1000;
+        }
+        else{
+            return _node.enabled ? 5000 : 500;
+        }
+    }
+}
+
+contract superNode is nodeStakePoolV2 {
+    mapping(uint256 => bool) public supperNode;
+    mapping(uint256 => uint256) public nodeRP;
+
+    function addSuperNode(uint256 _pid) public {
+        Node memory _node = node[_pid];
+
+        require(_node.nodeOwner == msg.sender, "Sorry, you dont have authority");
+        require(!supperNode[_pid], "node has be supper node!");
+        require(_node.depositAmount >= 80 * (10 **18), "node dont have enough depositAmount!");
+        supperNode[_pid] = true;
+    }
+
+    function isEnabled(uint256 _pid) public view returns(bool){
+        Node memory _node = node[_pid];
+        return (supperNode[_pid] && _node.depositAmount >= 80 * (10 **18));
+    }
+
+    function addRP(uint256 _normalNodePid, uint256 _supperNodePid ) public {
+        Node memory _node = node[_normalNodePid];
+
+        require(_node.nodeOwner == msg.sender, "Sorry, you dont have authority");
+        require(nodeRP[_normalNodePid] == 0, "You had supperNode!");
+        require(supperNode[_supperNodePid], "node not supper node!");
+        require(_normalNodePid != _supperNodePid);
+
+        nodeRP[_normalNodePid] = _supperNodePid;
+    }
+
+    function sendSupperNodeReward(uint256 _pid, uint256 _pending) internal {
+        if(nodeRP[_pid] != 0 && isEnabled(nodeRP[_pid])){
+            Node memory _node = node[nodeRP[_pid]];
+            safeSGRTransfer(_node.nodeOwner, _pending.mul(2000).div(10000));
+        }
+    }
+
+    function deposit(uint256 _pid, uint256 _amount) public override {
+        UserInfo storage user = userInfoMap[_pid][msg.sender];
+        Node storage _node = node[_pid];
+        address _father = RP.getFather(msg.sender);
+        address _granderFather = RP.getGrandFather(msg.sender);
+
+        updatePool();
+        if (user.amount > 0) {
+            uint256 pending = user.amount.mul(accSGRPerShare).div(1e12).sub(user.rewardDebt);
+            safeSGRTransfer(msg.sender, pending);
+            safeSGRTransfer(_father, pending.mul(fatherFee).div(10000));
+            safeSGRTransfer(_granderFather, pending.mul(grandFatherFee).div(10000));
+            sendNodeReward(_pid, pending.mul(nodeFee(_pid)).div(10000));
+            sendSupperNodeReward(_pid, pending);
+            user.hasReward = user.hasReward.add(pending);
+        }
+        LPToken.transferFrom(address(msg.sender), address(this), _amount);
+
+        user.amount = user.amount.add(_amount);
+        user.rewardDebt = user.amount.mul(accSGRPerShare).div(1e12);
+
+        _node.depositAmount = _node.depositAmount.add(_amount);
+        _node.currentWeekDeposit =_node.currentWeekDeposit.add(_amount);
+        supplyDeposit = supplyDeposit.add(_amount);
+        emit Deposit(msg.sender, _pid, _amount);
+    }
+
+
+    function withdraw(uint256 _pid, uint256 _Amount) public override {
+        UserInfo storage user = userInfoMap[_pid][msg.sender];
+        Node storage _node = node[_pid];
+        address _father = RP.getFather(msg.sender);
+        address _granderFather = RP.getGrandFather(msg.sender);
+        
+        require(user.amount >= _Amount, "withdraw: not good");
+        updatePool();
+        uint256 pending = user.amount.mul(accSGRPerShare).div(1e12).sub(user.rewardDebt);
+        if (pending > 0) {
+            safeSGRTransfer(msg.sender, pending);
+            safeSGRTransfer(_father, pending.mul(fatherFee).div(10000));
+            safeSGRTransfer(_granderFather, pending.mul(grandFatherFee).div(10000));
+            sendNodeReward(_pid, pending.mul(nodeFee(_pid)).div(10000));
+            sendSupperNodeReward(_pid, pending);
+            user.hasReward = user.hasReward.add(pending);
+        }
+        if (_Amount > 0) {
+            user.amount = user.amount.sub(_Amount);
+            LPToken.transfer(address(msg.sender), _Amount);  
+        }
+        user.rewardDebt = user.amount.mul(accSGRPerShare).div(1e12);
+
+        _node.depositAmount = _node.depositAmount.sub(_Amount);
+        uint256 _weekAmount = _node.currentWeekDeposit > _Amount ? _Amount : _node.currentWeekDeposit;
+        _node.currentWeekDeposit =_node.currentWeekDeposit.sub(_weekAmount);
+        supplyDeposit = supplyDeposit.sub(_Amount);
+        emit Withdraw(msg.sender, _pid, _Amount, pending);
     }
 }
