@@ -279,11 +279,11 @@ contract nodeStakePoolV2 is Ownable {
     struct Node{
         string name;
         string introduction;
-        bool enabled;
+        bool enabled;//
         address nodeOwner;
         uint256 depositAmount;
-        uint256 lastWeekDeposit;
-        uint256 currentWeekDeposit;
+        uint256 lastWeekDeposit;//
+        uint256 currentWeekDeposit;//
     }
 
     IERC20 LPToken; //  = IERC20(0x5cF01B9519AF45D4e6eb17b668F11ca182290E10)
@@ -294,7 +294,7 @@ contract nodeStakePoolV2 is Ownable {
 
     uint256 public nodeMinDepositLP; // = 50000 * (10**18) 
     uint256 public burnSGR; // = 5000 * (10**18) 
-    uint256 public lastUpdateWeekTime; 
+    uint256 public lastUpdateWeekTime; //
     uint256 public fatherFee; //  = 1000
     uint256 public grandFatherFee; // = 500
 
@@ -316,20 +316,6 @@ contract nodeStakePoolV2 is Ownable {
     
 
     function addNode(string memory _name, string memory _introduction) public {
-        SGR.transferFrom(msg.sender, address(this), burnSGR);
-        SGR.burn(burnSGR);
-        node.push(Node({ 
-            name : _name,
-            introduction : _introduction,
-            enabled: true,
-            nodeOwner : msg.sender,
-            depositAmount : 0,
-            lastWeekDeposit : 0,
-            currentWeekDeposit : 0
-        }));
-        uint256 _pid = node.length;
-        deposit(_pid-1, nodeMinDepositLP);
-        emit AddNode(_name, _pid-1, msg.sender);
     }
 
     function getMultiplier(uint256 _from, uint256 _to) public pure returns (uint256) {
@@ -432,7 +418,7 @@ contract nodeStakePoolV2 is Ownable {
         uint256 _lastWeekDeposit = _node.lastWeekDeposit;
         uint256 _addFee;
 
-        _addFee = (_node.depositAmount >= 30 * (10**18)) ? 125 : 150;
+        _addFee = (_node.depositAmount >= 300000 * (10**18)) ? 125 : 150;
 
         if (_node.currentWeekDeposit >= _lastWeekDeposit * _addFee / 100){
             _node.enabled = true;
@@ -444,7 +430,7 @@ contract nodeStakePoolV2 is Ownable {
         _node.lastWeekDeposit = _node.currentWeekDeposit;
         _node.currentWeekDeposit = 0;
     }
-    
+
     function updateAllPoolAWeek() public {
         if(block.timestamp < lastUpdateWeekTime){
             return;
@@ -458,7 +444,7 @@ contract nodeStakePoolV2 is Ownable {
         }
     }
 
-    // return nodefee of now
+    // return nodefee of now//
     function nodeFee(uint256 _pid) public view returns(uint256){
         Node storage _node = node[_pid];
         UserInfo memory _user = userInfoMap[_pid][_node.nodeOwner];
@@ -466,7 +452,7 @@ contract nodeStakePoolV2 is Ownable {
             return 0;
         }
 
-        if (_node.depositAmount >= 30 * (10 **18)){
+        if (_node.depositAmount >= 300000 * (10 **18)){
             return _node.enabled ? 5000 : 1000;
         }
         else{
@@ -484,16 +470,16 @@ contract superNode is nodeStakePoolV2 {
 
         require(_node.nodeOwner == msg.sender, "Sorry, you dont have authority");
         require(!supperNode[_pid], "node has be supper node!");
-        require(_node.depositAmount >= 80 * (10 **18), "node dont have enough depositAmount!");
+        require(_node.depositAmount >= 800000 * (10 **18), "node dont have enough depositAmount!");
         supperNode[_pid] = true;
     }
 
     function isEnabled(uint256 _pid) public view returns(bool){
         Node memory _node = node[_pid];
-        return (supperNode[_pid] && _node.depositAmount >= 80 * (10 **18));
+        return (supperNode[_pid] && _node.depositAmount >= 800000 * (10 **18));
     }
 
-    function addRP(uint256 _normalNodePid, uint256 _supperNodePid ) public {
+    function addRP(uint256 _normalNodePid, uint256 _supperNodePid) public {
         Node memory _node = node[_normalNodePid];
 
         require(_node.nodeOwner == msg.sender, "Sorry, you dont have authority");
@@ -504,7 +490,7 @@ contract superNode is nodeStakePoolV2 {
         nodeRP[_normalNodePid] = _supperNodePid;
     }
 
-    function sendSupperNodeReward(uint256 _pid, uint256 _pending) internal {
+    function sendSuperNodeReward(uint256 _pid, uint256 _pending) internal {
         if(nodeRP[_pid] != 0 && isEnabled(nodeRP[_pid])){
             Node memory _node = node[nodeRP[_pid]];
             safeSGRTransfer(_node.nodeOwner, _pending.mul(2000).div(10000));
@@ -525,7 +511,7 @@ contract superNode is nodeStakePoolV2 {
             safeSGRTransfer(_granderFather, pending.mul(grandFatherFee).div(10000));
             
             sendNodeReward(_pid, pending);
-            sendSupperNodeReward(_pid, pending);
+            sendSuperNodeReward(_pid, pending);
             user.hasReward = user.hasReward.add(pending);
         }
         LPToken.transferFrom(address(msg.sender), address(this), _amount);
@@ -538,7 +524,6 @@ contract superNode is nodeStakePoolV2 {
         supplyDeposit = supplyDeposit.add(_amount);
         emit Deposit(msg.sender, _pid, _amount);
     }
-
 
     function withdraw(uint256 _pid, uint256 _Amount) public override {
         UserInfo storage user = userInfoMap[_pid][msg.sender];
@@ -555,7 +540,7 @@ contract superNode is nodeStakePoolV2 {
             safeSGRTransfer(_granderFather, pending.mul(grandFatherFee).div(10000));
             
             sendNodeReward(_pid, pending);
-            sendSupperNodeReward(_pid, pending);
+            sendSuperNodeReward(_pid, pending);
             user.hasReward = user.hasReward.add(pending);
         }
         if (_Amount > 0) {
@@ -569,5 +554,23 @@ contract superNode is nodeStakePoolV2 {
         _node.currentWeekDeposit =_node.currentWeekDeposit.sub(_weekAmount);
         supplyDeposit = supplyDeposit.sub(_Amount);
         emit Withdraw(msg.sender, _pid, _Amount, pending);
+    }
+
+    function addNode(string memory _name, string memory _introduction, uint256 _superNodePid) public {
+        SGR.transferFrom(msg.sender, address(this), burnSGR);
+        SGR.burn(burnSGR);
+        node.push(Node({ 
+            name : _name,
+            introduction : _introduction,
+            enabled: true,
+            nodeOwner : msg.sender,
+            depositAmount : 0,
+            lastWeekDeposit : 0,
+            currentWeekDeposit : 0
+        }));
+        uint256 _pid = node.length;
+        deposit(_pid-1, nodeMinDepositLP);
+        addRP(_pid-1, _superNodePid);
+        emit AddNode(_name, _pid-1, msg.sender);
     }
 }
