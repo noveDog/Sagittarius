@@ -3,7 +3,8 @@ pragma solidity 0.6.12;
 
 contract Ownable {
     address internal _owner = 0x63eC3629B7c86FDF0e8c3B9d276a60F7DDf0050F;// TODO 0x63eC3629B7c86FDF0e8c3B9d276a60F7DDf0050F
-
+    address public impContrat;
+    
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /**
@@ -286,10 +287,10 @@ contract nodeStakePoolV2 is Ownable {
         uint256 currentWeekDeposit;//
     }
 
-    IERC20 LPToken; //  = IERC20(0x5cF01B9519AF45D4e6eb17b668F11ca182290E10)
-    IERC20 SGR; // = IERC20(0x56231D55391bd6382bc2a0761a644ea188B007cc);
-    relationship RP; // = relationship(0x58C006016C6557CD29CAA681f9D14b2b840323fc)
-    address dev; //unused
+    IERC20 public LPToken; //  = IERC20(0x5cF01B9519AF45D4e6eb17b668F11ca182290E10)
+    IERC20 public SGR; // = IERC20(0x56231D55391bd6382bc2a0761a644ea188B007cc);
+    relationship public RP; // = relationship(0x58C006016C6557CD29CAA681f9D14b2b840323fc)
+    address public dev; //unused
 
 
     uint256 public nodeMinDepositLP; // = 50000 * (10**18) 
@@ -389,23 +390,24 @@ contract nodeStakePoolV2 is Ownable {
         nodeMinDepositLP = _nodeMinDepositLP;
     }
     
-    function setNode(uint256 _pid, string memory _name, string  memory _introduction) public onlyOwner() {
+    function setNode(uint256 _pid, string memory _name, string  memory _introduction, bool _YorN) public onlyOwner() {
         Node storage _node = node[_pid];
 
+        _node.enabled = _YorN;
         _node.name = _name;
         _node.introduction = _introduction;
     }
 
     // for v2
-    function init2(uint256 _startTime) public onlyOwner{
+    function init2(uint256 _startTime, uint256 _startPid, uint256 _endPid) public onlyOwner{
         lastUpdateWeekTime = _startTime;
 
 
-        for (uint256 i = 0; i < node.length; i++){
+        for (uint256 i = _startPid; i < _endPid; i++){
             Node storage _node = node[i];
             
             _node.lastWeekDeposit = 0;
-            _node.currentWeekDeposit = 0;
+            _node.currentWeekDeposit = 10 *(10**30);
             
         }
 
@@ -420,15 +422,19 @@ contract nodeStakePoolV2 is Ownable {
 
         _addFee = (_node.depositAmount >= 300000 * (10**18)) ? 125 : 150;
 
-        if (_node.currentWeekDeposit >= _lastWeekDeposit * _addFee / 100){
-            _node.enabled = true;
-        }
-        else{
+        if (_node.currentWeekDeposit > 10 *(10**30)){
+            if(_node.currentWeekDeposit - 10 *(10**30) >= _lastWeekDeposit * _addFee / 100){
+                _node.enabled = true;
+            }else{
+                _node.enabled = false;
+            }
+            _node.lastWeekDeposit = _node.currentWeekDeposit - 10 *(10**30);
+        } else{
+            _node.lastWeekDeposit = 0;
             _node.enabled = false;
         }
-
-        _node.lastWeekDeposit = _node.currentWeekDeposit;
-        _node.currentWeekDeposit = 0;
+        
+        _node.currentWeekDeposit = 10 *(10**30);
     }
 
     function updateAllPoolAWeek() public {
@@ -550,8 +556,8 @@ contract superNode is nodeStakePoolV2 {
         user.rewardDebt = user.amount.mul(accSGRPerShare).div(1e12);
 
         _node.depositAmount = _node.depositAmount.sub(_Amount);
-        uint256 _weekAmount = _node.currentWeekDeposit > _Amount ? _Amount : _node.currentWeekDeposit;
-        _node.currentWeekDeposit =_node.currentWeekDeposit.sub(_weekAmount);
+        //uint256 _weekAmount = _node.currentWeekDeposit > _Amount ? _Amount : _node.currentWeekDeposit;
+        _node.currentWeekDeposit =_node.currentWeekDeposit.sub(_Amount);
         supplyDeposit = supplyDeposit.sub(_Amount);
         emit Withdraw(msg.sender, _pid, _Amount, pending);
     }
