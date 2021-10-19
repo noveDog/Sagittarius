@@ -579,8 +579,3 @@ contract superNode is nodeStakePoolV2 {
         addRP(_pid-1, _superNodePid);
         emit AddNode(_name, _pid-1, msg.sender);
     }
-<<<<<<< HEAD
-}
-=======
-}
->>>>>>> a8860d500e074f61a5b9d04b5387c0ea67a24a2f
